@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AgriMart</string>
+    <string name="title_activity_main">AgriMart</string>
+    <string name="package_name">com.agrimart.app</string>
+    <string name="custom_url_scheme">com.agrimart.app</string>
+</resources>

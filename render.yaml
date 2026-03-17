@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: agrimart-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render auto-generates a secure random value
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./agrimart.db
+      - key: CORS_ORIGINS
+        value: '["https://your-frontend.onrender.com","capacitor://localhost","http://localhost"]'
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: PRICE_REFRESH_INTERVAL_SECONDS
+        value: "30"
