@@ -52,6 +52,34 @@ async def get_all_seeds(db: AsyncSession, season: str = None, category: str = No
     return rows
 
 
+async def get_filtered_seeds(
+    db: AsyncSession,
+    season: str = None,
+    category: str = None,
+    search: str = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort_by: str | None = None,
+):
+    rows = await get_all_seeds(db, season=season, category=category, search=search)
+    if min_price is not None:
+        rows = [r for r in rows if r.price_per_kg >= min_price]
+    if max_price is not None:
+        rows = [r for r in rows if r.price_per_kg <= max_price]
+
+    if sort_by == "price_asc":
+        rows.sort(key=lambda item: item.price_per_kg)
+    elif sort_by == "price_desc":
+        rows.sort(key=lambda item: item.price_per_kg, reverse=True)
+    elif sort_by == "stock_desc":
+        rows.sort(key=lambda item: item.stock, reverse=True)
+    elif sort_by == "stock_asc":
+        rows.sort(key=lambda item: item.stock)
+    else:
+        rows.sort(key=lambda item: item.name.lower())
+    return rows
+
+
 async def get_seed_by_id(db: AsyncSession, seed_id: int):
     result = await db.execute(select(Seed).where(Seed.id == seed_id))
     return result.scalar_one_or_none()

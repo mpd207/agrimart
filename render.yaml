@@ -16,5 +16,29 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "1440"
+      - key: DEBUG_OTP
+        value: "false"
       - key: PRICE_REFRESH_INTERVAL_SECONDS
         value: "30"
+      - key: SMS_PROVIDER
+        value: twilio
+      - key: TWILIO_ACCOUNT_SID
+        value: ""
+      - key: TWILIO_AUTH_TOKEN
+        value: ""
+      - key: TWILIO_FROM_NUMBER
+        value: ""
+      - key: MSG91_AUTH_KEY
+        value: ""
+      - key: MSG91_TEMPLATE_ID
+        value: ""
+      - key: MSG91_FLOW_ID
+        value: ""
+      - key: ADMIN_API_KEY
+        generateValue: true
+      - key: ADMIN_MOBILE
+        value: ""
+      - key: ADMIN_PASSWORD
+        value: ""
+      - key: ADMIN_NAME
+        value: AgriMart Admin

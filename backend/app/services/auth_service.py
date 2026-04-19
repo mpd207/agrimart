@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.config import settings
+from app.services.sms_service import send_sms
 
 
 def _generate_otp(length: int = 6) -> str:
@@ -29,6 +30,34 @@ async def register_user(db: AsyncSession, mobile: str, password: str = None, **k
     return user
 
 
+async def ensure_admin_user(db: AsyncSession) -> User | None:
+    if not settings.ADMIN_MOBILE:
+        return None
+
+    result = await db.execute(select(User).where(User.mobile == settings.ADMIN_MOBILE))
+    user = result.scalar_one_or_none()
+    hashed_password = hash_password(settings.ADMIN_PASSWORD) if settings.ADMIN_PASSWORD else None
+
+    if user:
+        user.role = "admin"
+        if settings.ADMIN_NAME and not user.full_name:
+            user.full_name = settings.ADMIN_NAME
+        if hashed_password:
+            user.hashed_password = hashed_password
+    else:
+        user = User(
+            mobile=settings.ADMIN_MOBILE,
+            full_name=settings.ADMIN_NAME,
+            hashed_password=hashed_password,
+            role="admin",
+        )
+        db.add(user)
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 async def login_with_password(db: AsyncSession, mobile: str, password: str) -> str:
     result = await db.execute(select(User).where(User.mobile == mobile))
     user = result.scalar_one_or_none()
@@ -37,7 +66,7 @@ async def login_with_password(db: AsyncSession, mobile: str, password: str) -> s
     return create_access_token({"sub": str(user.id)}), user
 
 
-async def request_otp(db: AsyncSession, mobile: str) -> str:
+async def request_otp(db: AsyncSession, mobile: str):
     result = await db.execute(select(User).where(User.mobile == mobile))
     user = result.scalar_one_or_none()
     if not user:
@@ -48,9 +77,12 @@ async def request_otp(db: AsyncSession, mobile: str) -> str:
     user.otp_code = otp
     user.otp_expires_at = datetime.utcnow() + timedelta(seconds=settings.OTP_EXPIRE_SECONDS)
     await db.commit()
-    # In production: send via SMS gateway (Twilio / MSG91)
-    # For dev: return OTP directly in response
-    return otp
+    delivery_mode = await send_sms(mobile, f"Your AgriMart OTP is {otp}. It expires in {settings.OTP_EXPIRE_SECONDS // 60} minutes.")
+    return {
+        "message": "OTP sent",
+        "delivery_mode": delivery_mode,
+        "dev_otp": otp if settings.DEBUG_OTP or delivery_mode == "dev" else None,
+    }
 
 
 async def verify_otp(db: AsyncSession, mobile: str, otp: str):
@@ -67,3 +99,11 @@ async def verify_otp(db: AsyncSession, mobile: str, otp: str):
     await db.commit()
     token = create_access_token({"sub": str(user.id)})
     return token, user
+
+
+async def update_profile(db: AsyncSession, user: User, **kwargs) -> User:
+    for field, value in kwargs.items():
+        setattr(user, field, value)
+    await db.commit()
+    await db.refresh(user)
+    return user

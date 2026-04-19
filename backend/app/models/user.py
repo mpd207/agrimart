@@ -9,6 +9,7 @@ class User(Base):
     full_name     = Column(String, nullable=True)
     mobile        = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=True)
+    role          = Column(String, nullable=False, default="farmer")
     pincode       = Column(String, nullable=True)
     farming_type  = Column(String, nullable=True)
     landsize_acres = Column(String, nullable=True)

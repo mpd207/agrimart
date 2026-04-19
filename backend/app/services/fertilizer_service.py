@@ -43,6 +43,33 @@ async def get_all_fertilizers(db: AsyncSession, ftype: str = None, search: str =
     return rows
 
 
+async def get_filtered_fertilizers(
+    db: AsyncSession,
+    ftype: str = None,
+    search: str = None,
+    min_price: float | None = None,
+    max_price: float | None = None,
+    sort_by: str | None = None,
+):
+    rows = await get_all_fertilizers(db, ftype=ftype, search=search)
+    if min_price is not None:
+        rows = [r for r in rows if r.price_per_bag >= min_price]
+    if max_price is not None:
+        rows = [r for r in rows if r.price_per_bag <= max_price]
+
+    if sort_by == "price_asc":
+        rows.sort(key=lambda item: item.price_per_bag)
+    elif sort_by == "price_desc":
+        rows.sort(key=lambda item: item.price_per_bag, reverse=True)
+    elif sort_by == "stock_desc":
+        rows.sort(key=lambda item: item.stock, reverse=True)
+    elif sort_by == "stock_asc":
+        rows.sort(key=lambda item: item.stock)
+    else:
+        rows.sort(key=lambda item: item.name.lower())
+    return rows
+
+
 async def get_fertilizer_by_id(db: AsyncSession, fert_id: int):
     result = await db.execute(select(Fertilizer).where(Fertilizer.id == fert_id))
     return result.scalar_one_or_none()

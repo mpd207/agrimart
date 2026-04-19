@@ -12,6 +12,9 @@ import FertilizersPage from './pages/FertilizersPage'
 import DetailPage      from './pages/DetailPage'
 import CartPage        from './pages/CartPage'
 import ProfilePage     from './pages/ProfilePage'
+import OrdersPage      from './pages/OrdersPage'
+import NotificationsPage from './pages/NotificationsPage'
+import AdminOrdersPage from './pages/AdminOrdersPage'
 
 const NO_TAB_ROUTES = ['/login', '/register']
 const NO_STATUS_ROUTES = ['/login', '/register']
@@ -36,6 +39,9 @@ function AppShell() {
           <Route path="/fertilizers/:id" element={<ProtectedRoute><DetailPage itemType="fertilizer" /></ProtectedRoute>} />
           <Route path="/cart"            element={<ProtectedRoute><CartPage /></ProtectedRoute>} />
           <Route path="/profile"         element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/orders"          element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+          <Route path="/notifications"   element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/admin/orders"    element={<ProtectedRoute role="admin"><AdminOrdersPage /></ProtectedRoute>} />
           <Route path="*"                element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
@@ -44,9 +50,11 @@ function AppShell() {
   )
 }
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, role }) {
+  const user = useAuthStore((s) => s.user)
   const token = useAuthStore((s) => s.token)
   if (!token) return <Navigate to="/login" replace />
+  if (role && user?.role !== role) return <Navigate to="/home" replace />
   return children
 }
 

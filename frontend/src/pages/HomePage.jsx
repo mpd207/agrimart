@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { marketApi, seedsApi } from '../api'
+import { marketApi, recommendationsApi, seedsApi } from '../api'
 import { useAuthStore } from '../context/authStore'
 
 export default function HomePage() {
@@ -8,10 +8,12 @@ export default function HomePage() {
   const user     = useAuthStore((s) => s.user)
   const [prices, setPrices] = useState([])
   const [seeds,  setSeeds]  = useState([])
+  const [recommendations, setRecommendations] = useState([])
 
   useEffect(() => {
     marketApi.getPrices().then(r => setPrices(r.data.slice(0, 4))).catch(() => {})
     seedsApi.getAll().then(r => setSeeds(r.data.slice(0, 5))).catch(() => {})
+    recommendationsApi.getAll().then(r => setRecommendations(r.data.slice(0, 3))).catch(() => {})
   }, [])
 
   const greeting = () => {
@@ -90,6 +92,31 @@ export default function HomePage() {
           ))}
         </div>
 
+        {recommendations.length > 0 && (
+          <>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+              <h3 style={{fontFamily:'Poppins,sans-serif',fontSize:15,color:'#1B2B1C',fontWeight:600}}>Recommended for You</h3>
+              <span style={{color:'#2E7D32',fontSize:12,fontWeight:700}}>{user?.pincode || 'Season-based'}</span>
+            </div>
+            <div style={s.recoList}>
+              {recommendations.map((item) => {
+                const path = item.item_type === 'seed' ? `/seeds/${item.item_id}` : `/fertilizers/${item.item_id}`
+                return (
+                  <div key={`${item.item_type}-${item.item_id}`} style={s.recoCard} onClick={() => navigate(path)}>
+                    <div style={s.recoEmoji}>{item.emoji || '🌱'}</div>
+                    <div style={{flex:1}}>
+                      <div style={s.recoTitle}>{item.title}</div>
+                      <div style={s.recoSub}>{item.subtitle}</div>
+                      <div style={s.recoReason}>{item.reason}</div>
+                    </div>
+                    <div style={s.recoPrice}>{item.price_label}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+
         {/* Promo banner */}
         <div style={s.promoBanner} onClick={() => navigate('/seeds')}>
           <div>
@@ -129,6 +156,13 @@ const s = {
   featName:   { fontSize:13, fontWeight:700, color:'#1B2B1C' },
   featPrice:  { fontSize:13, color:'#2E7D32', fontWeight:800, marginTop:3 },
   featVar:    { fontSize:10, color:'#9EB0A0' },
+  recoList:   { display:'flex', flexDirection:'column', gap:10, marginBottom:20 },
+  recoCard:   { background:'#fff', borderRadius:12, border:'1px solid #DDE8DD', boxShadow:'0 2px 12px rgba(27,94,32,0.08)', padding:'13px 14px', display:'flex', alignItems:'flex-start', gap:12, cursor:'pointer' },
+  recoEmoji:  { width:42, height:42, borderRadius:12, background:'#E8F5E9', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 },
+  recoTitle:  { fontSize:13, fontWeight:800, color:'#1B2B1C' },
+  recoSub:    { fontSize:11, color:'#6B836D', marginTop:2 },
+  recoReason: { fontSize:11, color:'#3D5140', marginTop:6, lineHeight:1.4 },
+  recoPrice:  { fontSize:12, fontWeight:800, color:'#2E7D32', marginLeft:8, flexShrink:0 },
   promoBanner:{ background:'linear-gradient(135deg,#2E7D32,#1B5E20)', borderRadius:18, padding:'16px 18px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' },
   promoTitle: { color:'#fff', fontWeight:700, fontSize:14, marginBottom:4 },
   promoSub:   { color:'rgba(255,255,255,.75)', fontSize:12 },

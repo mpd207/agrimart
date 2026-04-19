@@ -5,10 +5,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.core.config import settings
 from app.core.database import init_db, AsyncSessionLocal
-from app.services.market_service import seed_market_prices, refresh_market_prices
+from app.services.market_service import seed_market_prices, seed_market_history, refresh_market_prices
 from app.services.seed_service import seed_seeds
 from app.services.fertilizer_service import seed_fertilizers
-from app.routers import auth, market_prices, seeds, fertilizers, cart
+from app.services.auth_service import ensure_admin_user
+from app.routers import auth, market_prices, seeds, fertilizers, cart, recommendations, orders, notifications
 
 scheduler = AsyncIOScheduler()
 
@@ -23,7 +24,9 @@ async def lifespan(app: FastAPI):
     # ── Startup ──────────────────────────────────────────
     await init_db()
     async with AsyncSessionLocal() as db:
+        await ensure_admin_user(db)
         await seed_market_prices(db)
+        await seed_market_history(db)
         await seed_seeds(db)
         await seed_fertilizers(db)
 
@@ -62,6 +65,9 @@ app.include_router(market_prices.router)
 app.include_router(seeds.router)
 app.include_router(fertilizers.router)
 app.include_router(cart.router)
+app.include_router(recommendations.router)
+app.include_router(orders.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health")

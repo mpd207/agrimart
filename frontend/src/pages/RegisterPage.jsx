@@ -17,7 +17,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       const { data } = await authApi.register(form)
-      setAuth(data.access_token, { id: data.user_id, full_name: data.full_name, mobile: data.mobile })
+      setAuth(data.access_token, data.user)
       toast.success('Account created!')
       navigate('/home')
     } catch (err) {

@@ -52,15 +52,18 @@ api.interceptors.response.use(
 
 // ── Auth ──────────────────────────────────────────────
 export const authApi = {
-  register: (data)          => api.post('/api/auth/register', data),
-  login: (mobile, password) => api.post('/api/auth/login', { mobile, password }),
-  requestOtp: (mobile)      => api.post('/api/auth/otp/request', { mobile }),
-  verifyOtp: (mobile, otp)  => api.post('/api/auth/otp/verify', { mobile, otp }),
+  register: (data)             => api.post('/api/auth/register', data),
+  login: (mobile, password)    => api.post('/api/auth/login', { mobile, password }),
+  requestOtp: (mobile)         => api.post('/api/auth/otp/request', { mobile }),
+  verifyOtp: (mobile, otp)     => api.post('/api/auth/otp/verify', { mobile, otp }),
+  getProfile: ()               => api.get('/api/auth/profile'),
+  updateProfile: (profileData) => api.put('/api/auth/profile', profileData),
 }
 
 // ── Market Prices ─────────────────────────────────────
 export const marketApi = {
   getPrices: () => api.get('/api/market-prices'),
+  getTrends: (period_days = 7) => api.get('/api/market-prices/trends', { params: { period_days } }),
 }
 
 // ── Seeds ─────────────────────────────────────────────
@@ -81,6 +84,27 @@ export const cartApi = {
   add: (item_type, item_id, quantity) => api.post('/api/cart', { item_type, item_id, quantity }),
   update: (cart_item_id, quantity)    => api.patch(`/api/cart/${cart_item_id}?quantity=${quantity}`),
   clear: ()                           => api.delete('/api/cart'),
+}
+
+export const recommendationsApi = {
+  getAll: () => api.get('/api/recommendations'),
+}
+
+export const ordersApi = {
+  getAll: () => api.get('/api/orders'),
+  getAdminAll: () => api.get('/api/orders/admin/all'),
+  place: ()  => api.post('/api/orders'),
+  cancel: (orderId) => api.post(`/api/orders/${orderId}/cancel`),
+  reorder: (orderId) => api.post(`/api/orders/${orderId}/reorder`),
+  updateStatus: (orderId, status) => api.patch(`/api/orders/${orderId}/status`, { status }),
+}
+
+export const notificationsApi = {
+  getAll: () => api.get('/api/notifications'),
+  markRead: (notificationId) => api.post(`/api/notifications/${notificationId}/read`),
+  getAlerts: () => api.get('/api/notifications/alerts'),
+  createAlert: (payload) => api.post('/api/notifications/alerts', payload),
+  deleteAlert: (alertId) => api.delete(`/api/notifications/alerts/${alertId}`),
 }
 
 export default api
