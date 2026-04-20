@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { marketApi, recommendationsApi, seedsApi } from '../api'
 import { useAuthStore } from '../context/authStore'
 
@@ -13,7 +14,7 @@ export default function HomePage() {
   useEffect(() => {
     marketApi.getPrices().then(r => setPrices(r.data.slice(0, 4))).catch(() => {})
     seedsApi.getAll().then(r => setSeeds(r.data.slice(0, 5))).catch(() => {})
-    recommendationsApi.getAll().then(r => setRecommendations(r.data.slice(0, 3))).catch(() => {})
+    recommendationsApi.getAll().then(r => setRecommendations(r.data.slice(0, 3))).catch(() => toast.error('Could not load seasonal picks'))
   }, [])
 
   const greeting = () => {
@@ -43,6 +44,7 @@ export default function HomePage() {
           {[
             { icon:'📈', label:'Market Prices', path:'/market',  bg:'#E8F5E9' },
             { icon:'🌱', label:'Seeds',          path:'/seeds',   bg:'#F1F8E9' },
+            { icon:'🍃', label:'Seasonal Picks', path:'/recommendations', bg:'#E8F8F1' },
             { icon:'🧪', label:'Fertilizers',   path:'/fertilizers', bg:'#FFF8E1' },
             { icon:'👤', label:'My Profile',    path:'/profile', bg:'#E3F2FD' },
           ].map(item => (
@@ -96,7 +98,7 @@ export default function HomePage() {
           <>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
               <h3 style={{fontFamily:'Poppins,sans-serif',fontSize:15,color:'#1B2B1C',fontWeight:600}}>Recommended for You</h3>
-              <span style={{color:'#2E7D32',fontSize:12,fontWeight:700}}>{user?.pincode || 'Season-based'}</span>
+              <span style={{color:'#2E7D32',fontSize:12,fontWeight:700,cursor:'pointer'}} onClick={() => navigate('/recommendations')}>Open →</span>
             </div>
             <div style={s.recoList}>
               {recommendations.map((item) => {
@@ -138,7 +140,7 @@ const s = {
   heroSub:    { color:'rgba(255,255,255,.6)', fontSize:12, marginTop:2 },
   notifBtn:   { background:'rgba(255,255,255,.15)', border:'none', borderRadius:10, width:36, height:36, color:'#fff', fontSize:16, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' },
   body:       { marginTop:-20, borderRadius:'22px 22px 0 0', background:'#F2F7F2', padding:'20px 16px 16px' },
-  quickGrid:  { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:22 },
+  quickGrid:  { display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:22 },
   qmItem:     { display:'flex', flexDirection:'column', alignItems:'center', gap:7, cursor:'pointer' },
   qmIcon:     { width:54, height:54, borderRadius:16, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, boxShadow:'0 2px 12px rgba(27,94,32,0.08)' },
   qmLabel:    { fontSize:11, fontWeight:700, color:'#3D5140', textAlign:'center', lineHeight:1.2 },

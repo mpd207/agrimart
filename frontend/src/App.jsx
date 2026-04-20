@@ -15,6 +15,7 @@ import ProfilePage     from './pages/ProfilePage'
 import OrdersPage      from './pages/OrdersPage'
 import NotificationsPage from './pages/NotificationsPage'
 import AdminOrdersPage from './pages/AdminOrdersPage'
+import RecommendationsPage from './pages/RecommendationsPage'
 
 const NO_TAB_ROUTES = ['/login', '/register']
 const NO_STATUS_ROUTES = ['/login', '/register']
@@ -41,6 +42,7 @@ function AppShell() {
           <Route path="/profile"         element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/orders"          element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
           <Route path="/notifications"   element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
+          <Route path="/recommendations" element={<ProtectedRoute><RecommendationsPage /></ProtectedRoute>} />
           <Route path="/admin/orders"    element={<ProtectedRoute role="admin"><AdminOrdersPage /></ProtectedRoute>} />
           <Route path="*"                element={<Navigate to="/login" replace />} />
         </Routes>
