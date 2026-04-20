@@ -42,3 +42,5 @@ services:
         value: ""
       - key: ADMIN_NAME
         value: AgriMart Admin
+      - key: REDIS_URL
+        value: ""

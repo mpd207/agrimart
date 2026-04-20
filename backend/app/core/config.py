@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     ADMIN_MOBILE: str = ""
     ADMIN_PASSWORD: str = ""
     ADMIN_NAME: str = "AgriMart Admin"
+    REDIS_URL: str = ""
 
     @property
     def cors_origins_list(self) -> List[str]:

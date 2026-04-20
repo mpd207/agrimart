@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { seedsApi } from '../api'
 
@@ -25,75 +25,83 @@ function stockLabel(stock) {
 
 export default function SeedsPage() {
   const navigate = useNavigate()
-  const [seeds, setSeeds] = useState([])
+  const [allSeeds, setAllSeeds] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [season, setSeason] = useState('All')
   const [category, setCategory] = useState('All')
-  const [maxPrice, setMaxPrice] = useState(350)
+  const [priceRange, setPriceRange] = useState([50, 350])
+  const [bounds, setBounds] = useState({ min: 50, max: 350 })
   const [sortBy, setSortBy] = useState('')
-  const debounceRef = useRef(null)
-
-  const loadSeeds = useCallback(async (nextState) => {
-    try {
-      setLoading(true)
-      const params = {}
-      if (nextState.search) params.search = nextState.search
-      if (nextState.season !== 'All') params.season = nextState.season
-      if (nextState.category !== 'All') params.category = nextState.category
-      params.max_price = nextState.maxPrice
-      if (nextState.sortBy) params.sort_by = nextState.sortBy
-      const { data } = await seedsApi.getAll(params)
-      setSeeds(data)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
-    loadSeeds({ search: '', season: 'All', category: 'All', maxPrice: 350, sortBy: '' })
-  }, [loadSeeds])
+    async function loadSeeds() {
+      try {
+        setLoading(true)
+        const { data } = await seedsApi.getAll()
+        setAllSeeds(data)
+        if (data.length > 0) {
+          const prices = data.map((item) => item.price_per_kg)
+          const min = Math.floor(Math.min(...prices))
+          const max = Math.ceil(Math.max(...prices))
+          setBounds({ min, max })
+          setPriceRange([min, max])
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  function triggerSearch(next) {
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => loadSeeds(next), 300)
-  }
+    loadSeeds()
+  }, [])
 
-  function handleSearch(value) {
-    setSearch(value)
-    triggerSearch({ search: value, season, category, maxPrice, sortBy })
-  }
+  const seeds = useMemo(() => {
+    const keyword = search.trim().toLowerCase()
+    const [minPrice, maxPrice] = priceRange
 
-  function handleSeason(value) {
-    setSeason(value)
-    loadSeeds({ search, season: value, category, maxPrice, sortBy })
-  }
+    const filtered = allSeeds.filter((seed) => {
+      const matchesSearch = !keyword || [
+        seed.name,
+        seed.variety,
+        seed.category,
+        seed.season,
+      ].some((value) => value?.toLowerCase().includes(keyword))
 
-  function handleCategory(value) {
-    setCategory(value)
-    loadSeeds({ search, season, category: value, maxPrice, sortBy })
-  }
+      const matchesSeason = season === 'All' || seed.season === season || seed.season === 'Both'
+      const matchesCategory = category === 'All' || seed.category === category
+      const matchesPrice = seed.price_per_kg >= minPrice && seed.price_per_kg <= maxPrice
 
-  function handleMaxPrice(value) {
-    const numericValue = Number(value)
-    setMaxPrice(numericValue)
-    loadSeeds({ search, season, category, maxPrice: numericValue, sortBy })
-  }
+      return matchesSearch && matchesSeason && matchesCategory && matchesPrice
+    })
 
-  function handleSort(value) {
-    setSortBy(value)
-    loadSeeds({ search, season, category, maxPrice, sortBy: value })
-  }
+    filtered.sort((a, b) => {
+      if (sortBy === 'price_asc') return a.price_per_kg - b.price_per_kg
+      if (sortBy === 'price_desc') return b.price_per_kg - a.price_per_kg
+      if (sortBy === 'stock_desc') return b.stock - a.stock
+      return a.name.localeCompare(b.name)
+    })
+
+    return filtered
+  }, [allSeeds, category, priceRange, search, season, sortBy])
 
   function clearFilters() {
     setSearch('')
     setSeason('All')
     setCategory('All')
-    setMaxPrice(350)
+    setPriceRange([bounds.min, bounds.max])
     setSortBy('')
-    loadSeeds({ search: '', season: 'All', category: 'All', maxPrice: 350, sortBy: '' })
+  }
+
+  function updateMinPrice(value) {
+    const nextMin = Number(value)
+    setPriceRange(([_, currentMax]) => [Math.min(nextMin, currentMax), currentMax])
+  }
+
+  function updateMaxPrice(value) {
+    const nextMax = Number(value)
+    setPriceRange(([currentMin]) => [currentMin, Math.max(nextMax, currentMin)])
   }
 
   return (
@@ -107,34 +115,41 @@ export default function SeedsPage() {
       <div className="search-wrap">
         <div className="search-bar">
           <svg viewBox="0 0 24 24" fill="none" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-          <input type="text" placeholder="Search seeds by name, variety..." value={search} onChange={(e) => handleSearch(e.target.value)} autoComplete="off" />
-          {search && <button className="search-clear" onClick={clearFilters}>×</button>}
+          <input type="text" placeholder="Search by name, variety, category..." value={search} onChange={(e) => setSearch(e.target.value)} autoComplete="off" />
+          {search && <button className="search-clear" onClick={() => setSearch('')}>×</button>}
         </div>
       </div>
 
       <div className="filter-row">
         {SEASONS.map((value) => (
-          <button key={value} className={`fp ${season === value ? 'active' : ''}`} onClick={() => handleSeason(value)}>{value}</button>
+          <button key={value} className={`fp ${season === value ? 'active' : ''}`} onClick={() => setSeason(value)}>{value}</button>
         ))}
       </div>
 
       <div className="filter-row" style={{ paddingTop: 0 }}>
         {CATEGORIES.map((value) => (
-          <button key={value} className={`fp ${category === value ? 'active' : ''}`} onClick={() => handleCategory(value)}>{value}</button>
+          <button key={value} className={`fp ${category === value ? 'active' : ''}`} onClick={() => setCategory(value)}>{value}</button>
         ))}
       </div>
 
       <div style={s.toolsWrap}>
         <div style={s.sliderCard}>
           <div style={s.sliderTop}>
-            <span style={s.sliderLabel}>Max Price</span>
-            <span style={s.sliderValue}>₹{maxPrice}</span>
+            <span style={s.sliderLabel}>Price Range</span>
+            <span style={s.sliderValue}>₹{priceRange[0]} - ₹{priceRange[1]}</span>
           </div>
-          <input type="range" min="50" max="350" step="10" value={maxPrice} onChange={(e) => handleMaxPrice(e.target.value)} style={s.range} />
+          <div style={s.rangeBlock}>
+            <label style={s.rangeLabel}>Min Price</label>
+            <input type="range" min={bounds.min} max={bounds.max} step="5" value={priceRange[0]} onChange={(e) => updateMinPrice(e.target.value)} style={s.range} />
+          </div>
+          <div style={s.rangeBlock}>
+            <label style={s.rangeLabel}>Max Price</label>
+            <input type="range" min={bounds.min} max={bounds.max} step="5" value={priceRange[1]} onChange={(e) => updateMaxPrice(e.target.value)} style={s.range} />
+          </div>
         </div>
 
         <div style={s.sortRow}>
-          <select className="inp" value={sortBy} onChange={(e) => handleSort(e.target.value)}>
+          <select className="inp" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
@@ -152,7 +167,7 @@ export default function SeedsPage() {
           <div style={s.empty}>
             <div style={s.emptyIcon}>🌱</div>
             <div style={s.emptyTitle}>No seeds found</div>
-            <div style={s.emptySub}>Try a different search, price range, or season filter.</div>
+            <div style={s.emptySub}>Try a different keyword, price range, category, or season filter.</div>
             <button className="btn-outline" style={{ marginTop: 16, width: 'auto', padding: '8px 20px' }} onClick={clearFilters}>Clear filters</button>
           </div>
         ) : (
@@ -185,6 +200,8 @@ const s = {
   sliderTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sliderLabel: { fontSize: 12, color: '#6B836D', fontWeight: 700 },
   sliderValue: { fontSize: 13, color: '#2E7D32', fontWeight: 800 },
+  rangeBlock: { marginTop: 8 },
+  rangeLabel: { display: 'block', fontSize: 11, fontWeight: 700, color: '#6B836D', marginBottom: 4 },
   range: { width: '100%' },
   sortRow: { display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, marginTop: 10 },
   resetBtn: { width: 'auto', padding: '0 16px', minHeight: 48 },

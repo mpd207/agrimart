@@ -1,25 +1,25 @@
-from pydantic import BaseModel, field_validator
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
 
 # ── Auth ──────────────────────────────────────────────
 class RegisterRequest(BaseModel):
-    mobile: str
+    mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
     password: Optional[str] = None
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(default=None, validation_alias=AliasChoices("full_name", "name"))
     pincode: Optional[str] = None
     farming_type: Optional[str] = None
     landsize_acres: Optional[str] = None
 
 
 class LoginRequest(BaseModel):
-    mobile: str
+    mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
     password: str
 
 
 class OTPRequest(BaseModel):
-    mobile: str
+    mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
 
 
 class OTPRequestResponse(BaseModel):
@@ -29,18 +29,22 @@ class OTPRequestResponse(BaseModel):
 
 
 class OTPVerifyRequest(BaseModel):
-    mobile: str
+    mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
     otp: str
 
 
 class UserProfileResponse(BaseModel):
     id: int
     full_name: Optional[str] = None
+    name: Optional[str] = None
     mobile: str
+    mobile_number: str
     role: str = "farmer"
     pincode: Optional[str] = None
     farming_type: Optional[str] = None
     landsize_acres: Optional[str] = None
+    created_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True

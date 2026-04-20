@@ -7,6 +7,7 @@ from fastapi import HTTPException, status
 from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token
 from app.core.config import settings
+from app.services.otp_store import clear_otp, read_otp, save_otp
 from app.services.sms_service import send_sms
 
 
@@ -63,6 +64,9 @@ async def login_with_password(db: AsyncSession, mobile: str, password: str) -> s
     user = result.scalar_one_or_none()
     if not user or not verify_password(password, user.hashed_password or ""):
         raise HTTPException(status_code=401, detail="Invalid mobile number or password")
+    user.last_login = datetime.utcnow()
+    await db.commit()
+    await db.refresh(user)
     return create_access_token({"sub": str(user.id)}), user
 
 
@@ -73,10 +77,11 @@ async def request_otp(db: AsyncSession, mobile: str):
         # Auto-create account for OTP-first flow
         user = User(mobile=mobile)
         db.add(user)
+        await db.commit()
+        await db.refresh(user)
     otp = _generate_otp()
-    user.otp_code = otp
-    user.otp_expires_at = datetime.utcnow() + timedelta(seconds=settings.OTP_EXPIRE_SECONDS)
-    await db.commit()
+    expires_at = datetime.utcnow() + timedelta(seconds=settings.OTP_EXPIRE_SECONDS)
+    await save_otp(db, user, otp, expires_at)
     delivery_mode = await send_sms(mobile, f"Your AgriMart OTP is {otp}. It expires in {settings.OTP_EXPIRE_SECONDS // 60} minutes.")
     return {
         "message": "OTP sent",
@@ -90,13 +95,15 @@ async def verify_otp(db: AsyncSession, mobile: str, otp: str):
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if user.otp_code != otp:
+    stored_otp, expires_at = await read_otp(db, user)
+    if stored_otp != otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
-    if datetime.utcnow() > user.otp_expires_at:
+    if not expires_at or datetime.utcnow() > expires_at:
         raise HTTPException(status_code=400, detail="OTP expired")
-    user.otp_code = None
-    user.otp_expires_at = None
+    await clear_otp(db, user)
+    user.last_login = datetime.utcnow()
     await db.commit()
+    await db.refresh(user)
     token = create_access_token({"sub": str(user.id)})
     return token, user
 

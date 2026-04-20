@@ -54,10 +54,10 @@ api.interceptors.response.use(
 export const authApi = {
   register: (data)             => api.post('/api/auth/register', data),
   login: (mobile, password)    => api.post('/api/auth/login', { mobile, password }),
-  requestOtp: (mobile)         => api.post('/api/auth/otp/request', { mobile }),
-  verifyOtp: (mobile, otp)     => api.post('/api/auth/otp/verify', { mobile, otp }),
-  getProfile: ()               => api.get('/api/auth/profile'),
-  updateProfile: (profileData) => api.put('/api/auth/profile', profileData),
+  requestOtp: (mobile)         => api.post('/api/auth/send-otp', { mobile_number: mobile }),
+  verifyOtp: (mobile, otp)     => api.post('/api/auth/verify-otp', { mobile_number: mobile, otp }),
+  getProfile: ()               => api.get('/api/users/profile'),
+  updateProfile: (profileData) => api.put('/api/users/profile', profileData),
 }
 
 // ── Market Prices ─────────────────────────────────────

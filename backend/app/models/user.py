@@ -17,3 +17,12 @@ class User(Base):
     otp_expires_at = Column(DateTime, nullable=True)
     is_active     = Column(Boolean, default=True)
     created_at    = Column(DateTime, server_default=func.now())
+    last_login    = Column(DateTime, nullable=True)
+
+    @property
+    def mobile_number(self):
+        return self.mobile
+
+    @property
+    def name(self):
+        return self.full_name

@@ -20,7 +20,7 @@ async def get_db():
 
 
 async def init_db():
-    from app.models import user, seed, fertilizer, market_price, market_price_history, cart, order, notification  # noqa: F401
+    from app.models import user, seed, fertilizer, market_price, market_price_history, cart, order, notification, weather_snapshot  # noqa: F401
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await conn.run_sync(_run_lightweight_migrations)
@@ -33,6 +33,8 @@ def _run_lightweight_migrations(connection):
         user_columns = {column["name"] for column in inspector.get_columns("users")}
         if "role" not in user_columns:
             connection.exec_driver_sql("ALTER TABLE users ADD COLUMN role VARCHAR NOT NULL DEFAULT 'farmer'")
+        if "last_login" not in user_columns:
+            connection.exec_driver_sql("ALTER TABLE users ADD COLUMN last_login DATETIME")
 
     if "orders" in inspector.get_table_names():
         order_columns = {column["name"] for column in inspector.get_columns("orders")}

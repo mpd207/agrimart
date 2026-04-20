@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fertilizersApi } from '../api'
 
@@ -24,67 +24,79 @@ function stockLabel(stock) {
 
 export default function FertilizersPage() {
   const navigate = useNavigate()
-  const [ferts, setFerts] = useState([])
+  const [allFerts, setAllFerts] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [type, setType] = useState('All')
-  const [maxPrice, setMaxPrice] = useState(1500)
+  const [priceRange, setPriceRange] = useState([250, 1500])
+  const [bounds, setBounds] = useState({ min: 250, max: 1500 })
   const [sortBy, setSortBy] = useState('')
-  const debounceRef = useRef(null)
-
-  const loadFerts = useCallback(async (nextState) => {
-    try {
-      setLoading(true)
-      const params = {}
-      if (nextState.search) params.search = nextState.search
-      if (nextState.type !== 'All') params.type = nextState.type
-      params.max_price = nextState.maxPrice
-      if (nextState.sortBy) params.sort_by = nextState.sortBy
-      const { data } = await fertilizersApi.getAll(params)
-      setFerts(data)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
 
   useEffect(() => {
-    loadFerts({ search: '', type: 'All', maxPrice: 1500, sortBy: '' })
-  }, [loadFerts])
+    async function loadFerts() {
+      try {
+        setLoading(true)
+        const { data } = await fertilizersApi.getAll()
+        setAllFerts(data)
+        if (data.length > 0) {
+          const prices = data.map((item) => item.price_per_bag)
+          const min = Math.floor(Math.min(...prices))
+          const max = Math.ceil(Math.max(...prices))
+          setBounds({ min, max })
+          setPriceRange([min, max])
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  function triggerSearch(next) {
-    clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => loadFerts(next), 300)
-  }
+    loadFerts()
+  }, [])
 
-  function handleSearch(value) {
-    setSearch(value)
-    triggerSearch({ search: value, type, maxPrice, sortBy })
-  }
+  const ferts = useMemo(() => {
+    const keyword = search.trim().toLowerCase()
+    const [minPrice, maxPrice] = priceRange
 
-  function handleType(value) {
-    setType(value)
-    loadFerts({ search, type: value, maxPrice, sortBy })
-  }
+    const filtered = allFerts.filter((fert) => {
+      const matchesSearch = !keyword || [
+        fert.name,
+        fert.type,
+        fert.npk_ratio,
+      ].some((value) => value?.toLowerCase().includes(keyword))
 
-  function handleMaxPrice(value) {
-    const numericValue = Number(value)
-    setMaxPrice(numericValue)
-    loadFerts({ search, type, maxPrice: numericValue, sortBy })
-  }
+      const matchesType = type === 'All' || fert.type === type
+      const matchesPrice = fert.price_per_bag >= minPrice && fert.price_per_bag <= maxPrice
 
-  function handleSort(value) {
-    setSortBy(value)
-    loadFerts({ search, type, maxPrice, sortBy: value })
-  }
+      return matchesSearch && matchesType && matchesPrice
+    })
+
+    filtered.sort((a, b) => {
+      if (sortBy === 'price_asc') return a.price_per_bag - b.price_per_bag
+      if (sortBy === 'price_desc') return b.price_per_bag - a.price_per_bag
+      if (sortBy === 'stock_desc') return b.stock - a.stock
+      return a.name.localeCompare(b.name)
+    })
+
+    return filtered
+  }, [allFerts, priceRange, search, sortBy, type])
 
   function clearFilters() {
     setSearch('')
     setType('All')
-    setMaxPrice(1500)
+    setPriceRange([bounds.min, bounds.max])
     setSortBy('')
-    loadFerts({ search: '', type: 'All', maxPrice: 1500, sortBy: '' })
+  }
+
+  function updateMinPrice(value) {
+    const nextMin = Number(value)
+    setPriceRange(([_, currentMax]) => [Math.min(nextMin, currentMax), currentMax])
+  }
+
+  function updateMaxPrice(value) {
+    const nextMax = Number(value)
+    setPriceRange(([currentMin]) => [currentMin, Math.max(nextMax, currentMin)])
   }
 
   return (
@@ -98,28 +110,35 @@ export default function FertilizersPage() {
       <div className="search-wrap">
         <div className="search-bar">
           <svg viewBox="0 0 24 24" fill="none" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-          <input type="text" placeholder="Search fertilizers, NPK ratio..." value={search} onChange={(e) => handleSearch(e.target.value)} autoComplete="off" />
-          {search && <button className="search-clear" onClick={clearFilters}>×</button>}
+          <input type="text" placeholder="Search by name, type, or NPK..." value={search} onChange={(e) => setSearch(e.target.value)} autoComplete="off" />
+          {search && <button className="search-clear" onClick={() => setSearch('')}>×</button>}
         </div>
       </div>
 
       <div className="filter-row">
         {TYPES.map((value) => (
-          <button key={value} className={`fp ${type === value ? 'active' : ''}`} onClick={() => handleType(value)}>{value}</button>
+          <button key={value} className={`fp ${type === value ? 'active' : ''}`} onClick={() => setType(value)}>{value}</button>
         ))}
       </div>
 
       <div style={s.toolsWrap}>
         <div style={s.sliderCard}>
           <div style={s.sliderTop}>
-            <span style={s.sliderLabel}>Max Price</span>
-            <span style={s.sliderValue}>₹{maxPrice}</span>
+            <span style={s.sliderLabel}>Price Range</span>
+            <span style={s.sliderValue}>₹{priceRange[0]} - ₹{priceRange[1]}</span>
           </div>
-          <input type="range" min="250" max="1500" step="50" value={maxPrice} onChange={(e) => handleMaxPrice(e.target.value)} style={s.range} />
+          <div style={s.rangeBlock}>
+            <label style={s.rangeLabel}>Min Price</label>
+            <input type="range" min={bounds.min} max={bounds.max} step="10" value={priceRange[0]} onChange={(e) => updateMinPrice(e.target.value)} style={s.range} />
+          </div>
+          <div style={s.rangeBlock}>
+            <label style={s.rangeLabel}>Max Price</label>
+            <input type="range" min={bounds.min} max={bounds.max} step="10" value={priceRange[1]} onChange={(e) => updateMaxPrice(e.target.value)} style={s.range} />
+          </div>
         </div>
 
         <div style={s.sortRow}>
-          <select className="inp" value={sortBy} onChange={(e) => handleSort(e.target.value)}>
+          <select className="inp" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
             {SORT_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
@@ -137,7 +156,8 @@ export default function FertilizersPage() {
           <div style={s.empty}>
             <div style={s.emptyIcon}>🧪</div>
             <div style={s.emptyTitle}>No fertilizers found</div>
-            <div style={s.emptySub}>Try a different search, price range, or product type.</div>
+            <div style={s.emptySub}>Try a different keyword, price range, or category filter.</div>
+            <button className="btn-outline" style={{ marginTop: 16, width: 'auto', padding: '8px 20px' }} onClick={clearFilters}>Clear filters</button>
           </div>
         ) : (
           ferts.map((f) => (
@@ -168,6 +188,8 @@ const s = {
   sliderTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sliderLabel: { fontSize: 12, color: '#6B836D', fontWeight: 700 },
   sliderValue: { fontSize: 13, color: '#2E7D32', fontWeight: 800 },
+  rangeBlock: { marginTop: 8 },
+  rangeLabel: { display: 'block', fontSize: 11, fontWeight: 700, color: '#6B836D', marginBottom: 4 },
   range: { width: '100%' },
   sortRow: { display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, marginTop: 10 },
   resetBtn: { width: 'auto', padding: '0 16px', minHeight: 48 },

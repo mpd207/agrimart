@@ -1,9 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Tooltip,
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
 import { marketApi } from '../api'
 
 const PERIODS = [7, 30, 90]
 const COMPARISON_COLORS = ['#2E7D32', '#F57C00', '#1976D2', '#8E24AA', '#C62828']
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
 export default function MarketPage() {
   const navigate = useNavigate()
@@ -104,7 +117,7 @@ export default function MarketPage() {
               <div>
                 <div style={s.rowName}>{p.emoji} {p.name}</div>
                 <div style={s.rowMeta}>{p.market} · {p.unit}</div>
-                <div style={s.rowTs}>{new Date(p.timestamp).toLocaleString('en-IN')}</div>
+                <div style={s.rowTs}>{new Date(p.timestamp).toISOString()}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <div style={s.rowPrice}>₹{Math.round(p.price).toLocaleString('en-IN')}</div>
@@ -205,40 +218,51 @@ function ComparisonChart({ trends }) {
     return <div style={s.chartEmpty}>Choose at least one commodity to display the comparison graph.</div>
   }
 
-  const width = 320
-  const height = 180
-  const padding = 18
-  const allValues = trends.flatMap((trend) => trend.points.map((point) => point.price))
-  const min = Math.min(...allValues)
-  const max = Math.max(...allValues)
-  const spread = Math.max(max - min, 1)
+  const labels = trends[0]?.points?.map((point) => point.date) || []
+  const datasets = trends.map((trend, index) => ({
+    label: trend.name,
+    data: trend.points.map((point) => point.price),
+    borderColor: COMPARISON_COLORS[index % COMPARISON_COLORS.length],
+    backgroundColor: `${COMPARISON_COLORS[index % COMPARISON_COLORS.length]}22`,
+    borderWidth: 3,
+    pointRadius: 2,
+    pointHoverRadius: 4,
+    tension: 0.35,
+    fill: false,
+  }))
 
-  function buildPath(points) {
-    return points.map((point, index) => {
-      const x = padding + (index / Math.max(points.length - 1, 1)) * (width - padding * 2)
-      const y = height - padding - ((point.price - min) / spread) * (height - padding * 2)
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`
-    }).join(' ')
+  const data = { labels, datasets }
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: (context) => `${context.dataset.label}: ₹${Math.round(context.parsed.y).toLocaleString('en-IN')}`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: '#6B836D', maxRotation: 0, autoSkip: true, maxTicksLimit: 6 },
+      },
+      y: {
+        grid: { color: '#E3EEE3' },
+        ticks: {
+          color: '#6B836D',
+          callback: (value) => `₹${Math.round(value).toLocaleString('en-IN')}`,
+        },
+      },
+    },
   }
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} style={s.comparisonChart}>
-      {[0, 1, 2, 3].map((line) => {
-        const y = padding + (line / 3) * (height - padding * 2)
-        return <line key={line} x1={padding} x2={width - padding} y1={y} y2={y} stroke="#E3EEE3" strokeWidth="1" />
-      })}
-      {trends.map((trend, index) => (
-        <path
-          key={trend.commodity}
-          d={buildPath(trend.points)}
-          fill="none"
-          stroke={COMPARISON_COLORS[index % COMPARISON_COLORS.length]}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
-    </svg>
+    <div style={s.chartWrap}>
+      <Line data={data} options={options} />
+    </div>
   )
 }
 
@@ -263,7 +287,7 @@ const s = {
   legendRow: { display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
   legendItem: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#3D5140' },
   legendDot: { width: 10, height: 10, borderRadius: '50%' },
-  comparisonChart: { width: '100%', height: 180, display: 'block' },
+  chartWrap: { width: '100%', height: 220 },
   chartEmpty: { fontSize: 12, color: '#6B836D', textAlign: 'center', padding: '24px 12px' },
   trendList: { display: 'flex', flexDirection: 'column', gap: 12 },
   trendCard: { background: '#F8FBF8', borderRadius: 14, padding: 12, border: '1px solid #E3EEE3' },

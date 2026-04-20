@@ -9,7 +9,7 @@ from app.services.market_service import seed_market_prices, seed_market_history,
 from app.services.seed_service import seed_seeds
 from app.services.fertilizer_service import seed_fertilizers
 from app.services.auth_service import ensure_admin_user
-from app.routers import auth, market_prices, seeds, fertilizers, cart, recommendations, orders, notifications
+from app.routers import auth, users, market_prices, seeds, fertilizers, cart, recommendations, orders, notifications
 
 scheduler = AsyncIOScheduler()
 
@@ -61,6 +61,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(market_prices.router)
 app.include_router(seeds.router)
 app.include_router(fertilizers.router)

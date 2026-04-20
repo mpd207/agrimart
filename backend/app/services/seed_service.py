@@ -48,7 +48,13 @@ async def get_all_seeds(db: AsyncSession, season: str = None, category: str = No
         rows = [r for r in rows if r.category.lower() == category.lower()]
     if search:
         s = search.lower()
-        rows = [r for r in rows if s in r.name.lower() or s in r.variety.lower() or s in r.season.lower()]
+        rows = [
+            r for r in rows
+            if s in r.name.lower()
+            or s in r.variety.lower()
+            or s in r.season.lower()
+            or s in r.category.lower()
+        ]
     return rows
 
 

@@ -51,8 +51,19 @@ async def request_otp(body: OTPRequest, db: AsyncSession = Depends(get_db)):
     return await auth_service.request_otp(db, body.mobile)
 
 
+@router.post("/send-otp", response_model=OTPRequestResponse)
+async def send_otp(body: OTPRequest, db: AsyncSession = Depends(get_db)):
+    return await auth_service.request_otp(db, body.mobile)
+
+
 @router.post("/otp/verify", response_model=TokenResponse)
 async def verify_otp(body: OTPVerifyRequest, db: AsyncSession = Depends(get_db)):
+    token, user = await auth_service.verify_otp(db, body.mobile, body.otp)
+    return _token_response(token, user)
+
+
+@router.post("/verify-otp", response_model=TokenResponse)
+async def verify_otp_alias(body: OTPVerifyRequest, db: AsyncSession = Depends(get_db)):
     token, user = await auth_service.verify_otp(db, body.mobile, body.otp)
     return _token_response(token, user)
 

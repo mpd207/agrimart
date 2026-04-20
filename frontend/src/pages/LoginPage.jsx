@@ -8,7 +8,7 @@ import { useAuthStore } from '../context/authStore'
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
-  const [tab, setTab] = useState('password')
+  const [tab, setTab] = useState('otp')
   const [mobile, setMobile] = useState('')
   const [password, setPassword] = useState('')
   const [otp, setOtp] = useState('')
@@ -76,8 +76,8 @@ export default function LoginPage() {
 
       <div style={styles.card}>
         <div style={styles.tabRow}>
-          <button style={{ ...styles.tabBtn, ...(tab === 'password' ? styles.tabActive : {}) }} onClick={() => setTab('password')}>Password</button>
           <button style={{ ...styles.tabBtn, ...(tab === 'otp' ? styles.tabActive : {}) }} onClick={() => setTab('otp')}>OTP Login</button>
+          <button style={{ ...styles.tabBtn, ...(tab === 'password' ? styles.tabActive : {}) }} onClick={() => setTab('password')}>Password</button>
         </div>
 
         {tab === 'password' && (
