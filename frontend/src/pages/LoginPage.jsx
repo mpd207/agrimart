@@ -5,6 +5,16 @@ import toast from 'react-hot-toast'
 import { authApi } from '../api'
 import { useAuthStore } from '../context/authStore'
 
+function normalizeMobile(value) {
+  let cleaned = String(value || '').replace(/\D/g, '')
+  if (cleaned.length === 12 && cleaned.startsWith('91')) cleaned = cleaned.slice(2)
+  return cleaned
+}
+
+function isValidMobile(value) {
+  return normalizeMobile(value).length === 10
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -17,14 +27,18 @@ export default function LoginPage() {
 
   async function handlePasswordLogin(e) {
     e.preventDefault()
-    if (!mobile || !password) return toast.error('Enter mobile and password')
+    if (!isValidMobile(mobile) || !password) return toast.error('Enter a valid 10-digit mobile number and password')
     setLoading(true)
     try {
-      const { data } = await authApi.login(mobile, password)
-      setAuth(data.access_token, data.user)
+      const normalizedMobile = normalizeMobile(mobile)
+      const { data } = await authApi.login(normalizedMobile, password)
+      localStorage.setItem('agrimart_token', data.access_token)
+      const profile = await authApi.getProfile()
+      setAuth(data.access_token, profile.data)
       toast.success('Welcome back!')
       navigate('/home')
     } catch (err) {
+      localStorage.removeItem('agrimart_token')
       toast.error(err.response?.data?.detail || 'Login failed')
     } finally {
       setLoading(false)
@@ -33,11 +47,13 @@ export default function LoginPage() {
 
   async function handleRequestOtp(e) {
     e.preventDefault()
-    if (!mobile) return toast.error('Enter your mobile number')
+    if (!isValidMobile(mobile)) return toast.error('Enter a valid 10-digit mobile number')
     setLoading(true)
     try {
-      const { data } = await authApi.requestOtp(mobile)
+      const normalizedMobile = normalizeMobile(mobile)
+      const { data } = await authApi.requestOtp(normalizedMobile)
       setOtpSent(true)
+      setMobile(normalizedMobile)
       if (data.dev_otp) {
         toast.success(`OTP sent (dev mode: ${data.dev_otp})`)
       } else {
@@ -52,14 +68,19 @@ export default function LoginPage() {
 
   async function handleVerifyOtp(e) {
     e.preventDefault()
+    if (!isValidMobile(mobile)) return toast.error('Enter a valid 10-digit mobile number')
     if (!otp) return toast.error('Enter the OTP')
     setLoading(true)
     try {
-      const { data } = await authApi.verifyOtp(mobile, otp)
-      setAuth(data.access_token, data.user)
+      const normalizedMobile = normalizeMobile(mobile)
+      const { data } = await authApi.verifyOtp(normalizedMobile, otp)
+      localStorage.setItem('agrimart_token', data.access_token)
+      const profile = await authApi.getProfile()
+      setAuth(data.access_token, profile.data)
       toast.success('Logged in!')
       navigate('/home')
     } catch (err) {
+      localStorage.removeItem('agrimart_token')
       toast.error(err.response?.data?.detail || 'OTP verification failed')
     } finally {
       setLoading(false)

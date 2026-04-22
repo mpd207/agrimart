@@ -3,6 +3,15 @@ from typing import Optional, List
 from datetime import datetime
 
 
+def _normalize_mobile(value: str) -> str:
+    cleaned = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if len(cleaned) == 12 and cleaned.startswith("91"):
+        cleaned = cleaned[2:]
+    if len(cleaned) != 10:
+        raise ValueError("Mobile number must be a valid 10-digit Indian number")
+    return cleaned
+
+
 # ── Auth ──────────────────────────────────────────────
 class RegisterRequest(BaseModel):
     mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
@@ -12,14 +21,29 @@ class RegisterRequest(BaseModel):
     farming_type: Optional[str] = None
     landsize_acres: Optional[str] = None
 
+    @field_validator("mobile")
+    @classmethod
+    def validate_mobile(cls, value: str) -> str:
+        return _normalize_mobile(value)
+
 
 class LoginRequest(BaseModel):
     mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
     password: str
 
+    @field_validator("mobile")
+    @classmethod
+    def validate_mobile(cls, value: str) -> str:
+        return _normalize_mobile(value)
+
 
 class OTPRequest(BaseModel):
     mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
+
+    @field_validator("mobile")
+    @classmethod
+    def validate_mobile(cls, value: str) -> str:
+        return _normalize_mobile(value)
 
 
 class OTPRequestResponse(BaseModel):
@@ -31,6 +55,11 @@ class OTPRequestResponse(BaseModel):
 class OTPVerifyRequest(BaseModel):
     mobile: str = Field(validation_alias=AliasChoices("mobile", "mobile_number"))
     otp: str
+
+    @field_validator("mobile")
+    @classmethod
+    def validate_mobile(cls, value: str) -> str:
+        return _normalize_mobile(value)
 
 
 class UserProfileResponse(BaseModel):

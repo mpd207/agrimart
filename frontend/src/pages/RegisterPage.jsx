@@ -4,6 +4,16 @@ import toast from 'react-hot-toast'
 import { authApi } from '../api'
 import { useAuthStore } from '../context/authStore'
 
+function normalizeMobile(value) {
+  let cleaned = String(value || '').replace(/\D/g, '')
+  if (cleaned.length === 12 && cleaned.startsWith('91')) cleaned = cleaned.slice(2)
+  return cleaned
+}
+
+function isValidMobile(value) {
+  return normalizeMobile(value).length === 10
+}
+
 export default function RegisterPage() {
   const navigate = useNavigate()
   const setAuth  = useAuthStore((s) => s.setAuth)
@@ -13,14 +23,18 @@ export default function RegisterPage() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.mobile) return toast.error('Mobile number is required')
+    if (!isValidMobile(form.mobile)) return toast.error('Enter a valid 10-digit mobile number')
     setLoading(true)
     try {
-      const { data } = await authApi.register(form)
-      setAuth(data.access_token, data.user)
+      const payload = { ...form, mobile: normalizeMobile(form.mobile) }
+      const { data } = await authApi.register(payload)
+      localStorage.setItem('agrimart_token', data.access_token)
+      const profile = await authApi.getProfile()
+      setAuth(data.access_token, profile.data)
       toast.success('Account created!')
       navigate('/home')
     } catch (err) {
+      localStorage.removeItem('agrimart_token')
       toast.error(err.response?.data?.detail || 'Registration failed')
     } finally { setLoading(false) }
   }
